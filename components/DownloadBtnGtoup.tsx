@@ -1,14 +1,16 @@
-import { MouseEventHandler } from 'react'
+import { MouseEventHandler, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { IconProp } from '@fortawesome/fontawesome-svg-core'
 import toast from 'react-hot-toast'
 import { useClipboard } from 'use-clipboard-copy'
+import { useTranslation } from 'next-i18next'
 
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
-import { getReadablePath } from '../utils/getReadablePath'
+import { getStoredToken } from '../utils/protectedRouteHandler'
+import CustomEmbedLinkMenu from './CustomEmbedLinkMenu'
 
 const btnStyleMap = (btnColor?: string) => {
   const colorMap = {
@@ -60,37 +62,44 @@ export const DownloadButton = ({
   )
 }
 
-const DownloadButtonGroup: React.FC<{ downloadUrl: string }> = ({ downloadUrl }) => {
+const DownloadButtonGroup = () => {
   const { asPath } = useRouter()
+  const hashedToken = getStoredToken(asPath)
+
   const clipboard = useClipboard()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const { t } = useTranslation()
 
   return (
-    <div className="flex flex-wrap justify-center gap-2">
-      <DownloadButton
-        onClickCallback={() => window.open(downloadUrl)}
-        btnColor="blue"
-        btnText="Download"
-        btnIcon="file-download"
-        btnTitle="Download the file directly through OneDrive"
-      />
-      {/* <DownloadButton
-        onClickCallback={() => window.open(`/api/proxy?url=${encodeURIComponent(downloadUrl)}`)}
-        btnColor="teal"
-        btnText="Proxy download"
-        btnIcon="download"
-        btnTitle="Download the file with the stream proxied through Vercel Serverless"
-      /> */}
-      <DownloadButton
-        onClickCallback={() => {
-          clipboard.copy(`${getBaseUrl()}/api?path=${getReadablePath(asPath)}&raw=true`)
-          toast.success('Copied direct link to clipboard.')
-        }}
-        btnColor="pink"
-        btnText="Copy direct link"
-        btnIcon="copy"
-        btnTitle="Copy the permalink to the file to the clipboard"
-      />
-    </div>
+    <>
+      <CustomEmbedLinkMenu menuOpen={menuOpen} setMenuOpen={setMenuOpen} path={asPath} />
+      <div className="flex flex-wrap justify-center gap-2">
+        <DownloadButton
+          onClickCallback={() => window.open(`/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)}
+          btnColor="blue"
+          btnText={t('Download')}
+          btnIcon="file-download"
+          btnTitle={t('Download the file directly through OneDrive')}
+        />
+        <DownloadButton
+          onClickCallback={() => {
+            clipboard.copy(`${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
+            toast.success(t('Copied direct link to clipboard.'))
+          }}
+          btnColor="pink"
+          btnText={t('Copy direct link')}
+          btnIcon="copy"
+          btnTitle={t('Copy the permalink to the file to the clipboard')}
+        />
+        <DownloadButton
+          onClickCallback={() => setMenuOpen(true)}
+          btnColor="teal"
+          btnText={t('Customise link')}
+          btnIcon="pen"
+        />
+      </div>
+    </>
   )
 }
 
